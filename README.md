@@ -1,5 +1,8 @@
 # Bedrock Panel
 
+*****Warning: built by ai*****
+
+
 A self-hosted control panel for a Minecraft Bedrock Dedicated Server, built
 because the generic panels (Pterodactyl, Crafty, AMP) don't expose every
 `server.properties` field, `allowlist.json`/`permissions.json`, backups,
@@ -14,6 +17,8 @@ and the Bedrock server container directly.
 ## 1. First-time setup
 
 ```bash
+git clone https://github.com/00ahmed000/mc-bedrock-panel.git
+cd mc-bedrock-panel
 cp .env.example .env
 cp sftp/users.conf.example sftp/users.conf
 ```
