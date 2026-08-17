@@ -1,0 +1,17 @@
+# Copy this file to users.conf BEFORE your first `docker-compose up -d`:
+#
+#   cp sftp/users.conf.example sftp/users.conf
+#
+# Format (one user per line): username:password:uid:gid
+# The username here MUST match SFTP_USERNAME in your .env — it's baked
+# into the sftp service's volume mount path in docker-compose.yml.
+#
+# Change the password below before first boot. After that, rotate it
+# any time from the panel's SFTP page instead of editing this file by
+# hand — the panel rewrites this file AND recreates the sftp container
+# so the new password actually takes effect (a plain restart isn't
+# enough for atmoz/sftp to pick up a changed users.conf).
+#
+# sftp/users.conf is gitignored — this .example file is the only copy
+# meant to be committed.
+admin:change-this-password-before-first-boot:1000:1000

@@ -1,0 +1,99 @@
+name: bedrock-panel
+
+services:
+  # ---------------------------------------------------------------------
+  # FastAPI management engine. Not published to the host directly — the
+  # ONLY way in is through nginx, which is the only service with a
+  # published port. Mounts the Docker socket so it can control the
+  # minecraft and sftp containers (see backend/Dockerfile for why it
+  # deliberately runs as root).
+  # ---------------------------------------------------------------------
+  backend:
+    build: ./backend
+    container_name: bedrock_backend
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - BEDROCK_PATH=/bedrock
+      - BACKUP_PATH=/backups
+      - SFTP_CONFIG_PATH=/sftp_config
+      - MINECRAFT_CONTAINER_NAME=bedrock_server
+      - SFTP_CONTAINER_NAME=bedrock_sftp
+    volumes:
+      - bedrock_data:/bedrock
+      - backups_data:/backups
+      - ./sftp:/sftp_config
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - internal
+    depends_on:
+      - minecraft
+      - sftp
+
+  # ---------------------------------------------------------------------
+  # SFTP file access on a non-standard port. Its ONLY source of truth for
+  # credentials is the bind-mounted users.conf file below — see
+  # sftp/users.conf.example and README.md before first boot.
+  # ---------------------------------------------------------------------
+  sftp:
+    image: atmoz/sftp:debian
+    container_name: bedrock_sftp
+    restart: always
+    ports:
+      - "${SFTP_PORT:-2222}:22"
+    volumes:
+      - bedrock_data:/home/${SFTP_USERNAME:-admin}/server
+      - ./sftp/users.conf:/etc/sftp/users.conf:ro
+    networks:
+      - internal
+
+  # ---------------------------------------------------------------------
+  # The Bedrock Dedicated Server itself. The image installs BDS's runtime
+  # dependencies (libcurl4, openssl) but ships no game files of its own —
+  # those land in the bedrock_data volume the first time you run "Update
+  # Server" from the panel, per Mojang's distribution terms.
+  # ---------------------------------------------------------------------
+  minecraft:
+    build:
+      context: ./minecraft
+      args:
+        BEDROCK_UID: ${BEDROCK_UID:-1000}
+        BEDROCK_GID: ${BEDROCK_GID:-1000}
+    container_name: bedrock_server
+    restart: unless-stopped
+    user: "${BEDROCK_UID:-1000}:${BEDROCK_GID:-1000}"
+    stdin_open: true
+    working_dir: /bedrock
+    volumes:
+      - bedrock_data:/bedrock
+    ports:
+      - "${BEDROCK_PORT:-19132}:19132/udp"
+      - "${BEDROCK_PORTV6:-19133}:19133/udp"
+    networks:
+      - internal
+
+  # ---------------------------------------------------------------------
+  # Reverse proxy + static Vue build. This is the ONLY service exposed to
+  # the host — everything else is reached through it.
+  # ---------------------------------------------------------------------
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    container_name: bedrock_nginx
+    restart: always
+    ports:
+      - "${PANEL_PORT:-80}:80"
+    networks:
+      - internal
+    depends_on:
+      - backend
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  bedrock_data:
+  backups_data:
