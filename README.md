@@ -18,6 +18,8 @@ containers directly — there's no separate orchestrator.
 ## 1. First-time setup
 
 ```bash
+git clone https://github.com/00ahmed000/mc-bedrock-panel.git
+cd mc-bedrock-panel
 cp .env.example .env
 cp sftp/users.conf.example sftp/users.conf
 ```
