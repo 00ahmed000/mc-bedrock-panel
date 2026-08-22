@@ -114,7 +114,29 @@ class PermissionEntry(BaseModel):
 
 
 class UpdatePayload(BaseModel):
-    download_url: str
+    # Provide EITHER version (the panel builds the official URL for you)
+    # OR an explicit download_url for a mirror/preview build not covered
+    # by the standard URL pattern. expected_sha256 is optional integrity
+    # verification — see EndstoneMC/bedrock-server-data on GitHub for a
+    # community-maintained list of hashes per version.
+    version: Optional[str] = Field(None, max_length=32)
+    download_url: Optional[str] = None
+    expected_sha256: Optional[str] = Field(None, min_length=64, max_length=64)
+
+    @field_validator("version")
+    @classmethod
+    def version_looks_sane(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        import re
+
+        if not re.match(r"^[0-9]+(\.[0-9]+){1,3}$", v):
+            raise ValueError("version should look like 1.21.90.4")
+        return v
+
+
+class ConsoleCommandRequest(BaseModel):
+    command: str = Field(..., min_length=1, max_length=512)
 
 
 class SftpPasswordChange(BaseModel):

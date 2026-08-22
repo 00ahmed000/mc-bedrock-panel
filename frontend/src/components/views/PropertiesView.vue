@@ -1,19 +1,22 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import api from '../../api'
 import { propertyGroups } from '../../data/propertyFields'
 import { extractErrorMessage, toastStore } from '../../stores/toast'
 import Card from '../Card.vue'
 import Icon from '../Icon.vue'
 
+const props = defineProps({ id: { type: String, required: true } })
 const form = reactive({})
 const loading = ref(true)
 const saving = ref(false)
+const serverId = computed(() => props.id)
 
 async function load() {
+  if (!serverId.value) return
   loading.value = true
   try {
-    const { data } = await api.get('/properties')
+    const { data } = await api.get(`/servers/${serverId.value}/properties`)
     Object.assign(form, data)
   } catch (err) {
     toastStore.error(extractErrorMessage(err, 'Could not load server.properties'))
@@ -23,9 +26,10 @@ async function load() {
 }
 
 async function save() {
+  if (!serverId.value) return
   saving.value = true
   try {
-    const { data } = await api.post('/properties', form)
+    const { data } = await api.post(`/servers/${serverId.value}/properties`, form)
     Object.assign(form, data)
     toastStore.success('Properties saved. Restart the server to apply changes.')
   } catch (err) {
@@ -35,11 +39,16 @@ async function save() {
   }
 }
 
+watch(serverId, load)
 onMounted(load)
 </script>
 
 <template>
-  <div v-if="loading" class="text-sm text-ink-muted">Loading\u2026</div>
+  <Card v-if="!serverId">
+    <p class="text-sm text-ink-muted">Select or create a server first.</p>
+  </Card>
+
+  <div v-else-if="loading" class="text-sm text-ink-muted">Loading\u2026</div>
 
   <form v-else @submit.prevent="save">
     <Card v-for="group in propertyGroups" :key="group.title" :title="group.title">
