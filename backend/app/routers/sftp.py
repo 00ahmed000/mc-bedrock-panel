@@ -1,9 +1,10 @@
 """
 SFTP credential management. Only the password is changeable here — see
 schemas.SftpPasswordChange for why the username is fixed at first-boot
-setup. Rewriting users.conf and calling recreate_container_preserving_
-identity() together are what make a password change actually take
-effect; see docker_utils.py's docstring for the full explanation.
+setup. Since v2, the sftp service mounts the whole shared servers_data
+volume once (servers/), so every current AND future server's files are
+already browsable under servers/<server-id>/ with no per-server
+reconfiguration needed — see docker-compose.yml.
 """
 import os
 

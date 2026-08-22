@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 from . import config
 
-_BACKUP_FILENAME_RE = re.compile(r"^backup_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.tar\.gz$")
+_BACKUP_FILENAME_RE = re.compile(r"^backup_[a-z0-9-]+_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.tar\.gz$")
 
 
 class UnsafePathError(Exception):

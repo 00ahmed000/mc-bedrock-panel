@@ -3,10 +3,13 @@ name: bedrock-panel
 services:
   # ---------------------------------------------------------------------
   # FastAPI management engine. Not published to the host directly — the
-  # ONLY way in is through nginx, which is the only service with a
-  # published port. Mounts the Docker socket so it can control the
-  # minecraft and sftp containers (see backend/Dockerfile for why it
-  # deliberately runs as root).
+  # ONLY way in is through nginx. Mounts the Docker socket so it can
+  # create/control minecraft server containers and the sftp container.
+  #
+  # MUST stay a single process (no --workers > 1, no multiple replicas):
+  # the in-process task scheduler (see backend/app/scheduler.py) would
+  # otherwise run once per worker and fire every scheduled backup/restart
+  # that many times over.
   # ---------------------------------------------------------------------
   backend:
     build: ./backend
@@ -15,26 +18,36 @@ services:
     env_file:
       - .env
     environment:
-      - BEDROCK_PATH=/bedrock
+      - SERVERS_ROOT=/servers
       - BACKUP_PATH=/backups
       - SFTP_CONFIG_PATH=/sftp_config
-      - MINECRAFT_CONTAINER_NAME=bedrock_server
+      - BACKEND_CONTAINER_NAME=bedrock_backend
       - SFTP_CONTAINER_NAME=bedrock_sftp
+      - MINECRAFT_IMAGE=bedrock-panel-minecraft:latest
+      - DOCKER_NETWORK=bedrock-panel_internal
+      - TZ=${TZ:-UTC}
     volumes:
-      - bedrock_data:/bedrock
+      - servers_data:/servers
       - backups_data:/backups
       - ./sftp:/sftp_config
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - internal
     depends_on:
-      - minecraft
       - sftp
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ---------------------------------------------------------------------
-  # SFTP file access on a non-standard port. Its ONLY source of truth for
-  # credentials is the bind-mounted users.conf file below — see
-  # sftp/users.conf.example and README.md before first boot.
+  # SFTP file access on a non-standard port. Mounts the WHOLE shared
+  # servers_data volume once, so every current and future server (however
+  # many get created later from the panel) is automatically browsable
+  # under servers/<server-id>/ with no reconfiguration needed. Its ONLY
+  # source of truth for credentials is the bind-mounted users.conf below
+  # — see sftp/users.conf.example and README.md before first boot.
   # ---------------------------------------------------------------------
   sftp:
     image: atmoz/sftp:debian
@@ -43,16 +56,24 @@ services:
     ports:
       - "${SFTP_PORT:-2222}:22"
     volumes:
-      - bedrock_data:/home/${SFTP_USERNAME:-admin}/server
+      - servers_data:/home/${SFTP_USERNAME:-admin}/servers
       - ./sftp/users.conf:/etc/sftp/users.conf:ro
     networks:
       - internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ---------------------------------------------------------------------
-  # The Bedrock Dedicated Server itself. The image installs BDS's runtime
-  # dependencies (libcurl4, openssl) but ships no game files of its own —
-  # those land in the bedrock_data volume the first time you run "Update
-  # Server" from the panel, per Mojang's distribution terms.
+  # Bedrock Dedicated Server image. Intentionally profile-gated so plain
+  # `docker compose up -d` never starts a container from it directly —
+  # the backend creates real, individually-named containers from this
+  # same image on demand (see backend/app/docker_utils.py). Build it
+  # explicitly once:
+  #
+  #   docker compose build minecraft
   # ---------------------------------------------------------------------
   minecraft:
     build:
@@ -60,18 +81,8 @@ services:
       args:
         BEDROCK_UID: ${BEDROCK_UID:-1000}
         BEDROCK_GID: ${BEDROCK_GID:-1000}
-    container_name: bedrock_server
-    restart: unless-stopped
-    user: "${BEDROCK_UID:-1000}:${BEDROCK_GID:-1000}"
-    stdin_open: true
-    working_dir: /bedrock
-    volumes:
-      - bedrock_data:/bedrock
-    ports:
-      - "${BEDROCK_PORT:-19132}:19132/udp"
-      - "${BEDROCK_PORTV6:-19133}:19133/udp"
-    networks:
-      - internal
+    image: bedrock-panel-minecraft:latest
+    profiles: ["build-only"]
 
   # ---------------------------------------------------------------------
   # Reverse proxy + static Vue build. This is the ONLY service exposed to
@@ -89,11 +100,17 @@ services:
       - internal
     depends_on:
       - backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   internal:
+    name: bedrock-panel_internal
     driver: bridge
 
 volumes:
-  bedrock_data:
+  servers_data:
   backups_data:

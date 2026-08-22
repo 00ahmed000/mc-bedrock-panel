@@ -101,5 +101,35 @@ defineProps({
       <polyline points="7 9 11 12 7 15" />
       <line x1="13" y1="15" x2="17" y2="15" />
     </template>
+
+    <template v-else-if="name === 'gamerules'">
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <circle cx="8.5" cy="8.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="8.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="8.5" cy="15.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="15.5" r="1.1" fill="currentColor" stroke="none" />
+    </template>
+
+    <template v-else-if="name === 'servers'">
+      <rect x="3" y="4" width="18" height="5" rx="1.5" />
+      <rect x="3" y="14" width="18" height="5" rx="1.5" />
+      <circle cx="7" cy="6.5" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="7" cy="16.5" r="0.9" fill="currentColor" stroke="none" />
+    </template>
+
+    <template v-else-if="name === 'tasks'">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7 V12 L16 14" />
+    </template>
+
+    <template v-else-if="name === 'settings'">
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <circle cx="14" cy="7" r="2" fill="currentColor" stroke="none" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <circle cx="8" cy="12" r="2" fill="currentColor" stroke="none" />
+      <line x1="4" y1="17" x2="20" y2="17" />
+      <circle cx="16" cy="17" r="2" fill="currentColor" stroke="none" />
+    </template>
   </svg>
 </template>
